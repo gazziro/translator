@@ -16,8 +16,8 @@ def format_timestamp(seconds: float) -> str:
 if __name__ == "__main__":
 
     model_size = "large-v3"
-    video_fpath = r"C:\Users\Biel\Documents\translator\video_sample.mp4"
-    caption_fpath = r"C:\Users\Biel\Documents\translator\video_sample_caption.srt"
+    video_fpath = r"video_sample.mp4"
+    caption_fpath = r"video_sample_caption.srt"
 
     # Run on GPU with FP16
     model = WhisperModel(model_size, device="cuda", compute_type="float16")
