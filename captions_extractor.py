@@ -1,7 +1,9 @@
-from faster_whisper import WhisperModel
+from typing import Union
+import faster_whisper
 from datetime import timedelta
+from tqdm import tqdm
 
-def format_timestamp(seconds: float) -> str:
+def format_timestamp_srt(seconds: float) -> str:
     td = timedelta(seconds=seconds)
     total_seconds = int(td.total_seconds())
     millis = int((seconds - total_seconds) * 1000)
@@ -23,26 +25,49 @@ def format_timestamp_vtt(seconds: float) -> str:
 
     return f"{hours:02}:{minutes:02}:{seconds:02}.{millis:03}"
 
-if __name__ == "__main__":
-    model_size = "large-v3"
-    video_fpath = r"video_sample.mp4"
-    caption_fpath = r"video_sample_caption.vtt"
-
-    # Run on GPU with FP16
+def load_model_and_transcribe(
+    model_size : str,
+    video_fpath : str,
+    target_language : str
+    ) -> Union[faster_whisper.WhisperModel, faster_whisper.transcribe.TranscriptionInfo]:
+    
     # model = WhisperModel(model_size, device="cuda", compute_type="float16")
+    # segments, info = model.transcribe(
+    #     video_fpath,
+    #     beam_size=3,
+    #     task="translate",
+    #     language=target_language
+    # )
+    # print("Running on CUDA")
+    model = faster_whisper.WhisperModel(model_size, device="cpu", compute_type="int8")
+    print("Running on CPU")
+    segments, info = model.transcribe(
+        video_fpath,
+        beam_size=3,
+        task="translate",
+        language=target_language
+    )
+    return segments, info
 
-    model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
-    segments, info = model.transcribe(video_fpath, beam_size=3)
-    print(f"Detected language {info.language} with probability {info.language_probability}")
-
+def write_captions(segments, caption_fpath):
     with open(caption_fpath, "w", encoding="utf-8") as srt_file:
         srt_file.write("WEBVTT\n\n")
-        for i, segment in enumerate(segments, start=1):
+        for i, segment in enumerate(tqdm(segments), start=1):
             start = format_timestamp_vtt(segment.start)
             end = format_timestamp_vtt(segment.end)
             srt_file.write(f"{i}\n")
             srt_file.write(f"{start} --> {end}\n")
-            srt_file.write(f"{segment.text.strip()}\n\n")
 
-    print(f"legenda salva em: {caption_fpath}")
+
+if __name__ == "__main__":
+    model_size = "large-v3"
+    video_fpath = r"video_sample.mp4"
+    caption_fpath = r"video_sample_caption.vtt"
+    caption_language = "pt"
+
+    segments, info, = load_model_and_transcribe(model_size, video_fpath, caption_language)
+    print(f":: Detected language {info.language} with probability {info.language_probability}")
+    write_captions(segments, caption_fpath)
+
+    print(f":: Caption saved in: {caption_fpath}")
