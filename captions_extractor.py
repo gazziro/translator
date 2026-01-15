@@ -1,6 +1,8 @@
 from typing import Union
-import faster_whisper
 from datetime import timedelta
+from pathlib import Path
+
+from faster_whisper import WhisperModel, transcribe
 from tqdm import tqdm
 
 def format_timestamp_srt(seconds: float) -> str:
@@ -29,24 +31,24 @@ def load_model_and_transcribe(
     model_size : str,
     video_fpath : str,
     target_language : str
-    ) -> Union[faster_whisper.WhisperModel, faster_whisper.transcribe.TranscriptionInfo]:
+    ) -> Union[WhisperModel, transcribe.TranscriptionInfo]:
     
-    # model = WhisperModel(model_size, device="cuda", compute_type="float16")
-    # segments, info = model.transcribe(
-    #     video_fpath,
-    #     beam_size=3,
-    #     task="translate",
-    #     language=target_language
-    # )
-    # print("Running on CUDA")
-    model = faster_whisper.WhisperModel(model_size, device="cpu", compute_type="int8")
-    print("Running on CPU")
+    model = WhisperModel(model_size, device="cuda", compute_type="float16")
     segments, info = model.transcribe(
         video_fpath,
         beam_size=3,
         task="translate",
         language=target_language
     )
+    print("Running on CUDA")
+    # model = faster_whisper.WhisperModel(model_size, device="cpu", compute_type="int8")
+    # print("Running on CPU")
+    # segments, info = model.transcribe(
+    #     video_fpath,
+    #     beam_size=3,
+    #     task="translate",
+    #     language=target_language
+    # )
     return segments, info
 
 
@@ -59,15 +61,12 @@ def write_captions(segments, caption_fpath):
             srt_file.write(f"{i}\n")
             srt_file.write(f"{start} --> {end}\n")
 
+def main(video_fpath, caption_dpath, caption_language="pt", model_size = "large-v3") -> None:
+    print(f":: Starting processing...")
 
-if __name__ == "__main__":
-    model_size = "large-v3"
-    video_fpath = r"video_sample.mp4"
-    caption_fpath = r"video_sample_caption.vtt"
-    caption_language = "pt"
-
+    caption_fpath = Path(caption_dpath, f"{Path(video_fpath).stem}.vtt")
     segments, info, = load_model_and_transcribe(model_size, video_fpath, caption_language)
     print(f":: Detected language {info.language} with probability {info.language_probability}")
-    write_captions(segments, caption_fpath)
 
+    write_captions(segments, caption_fpath)
     print(f":: Caption saved in: {caption_fpath}")
